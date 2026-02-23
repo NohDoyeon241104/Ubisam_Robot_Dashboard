@@ -1,0 +1,54 @@
+{
+  "product": "ROS2 Jazzy Demo",
+  "nodes": [
+    {
+      "type": "talker",
+      "label": "📢 Talker",
+      "color": "#42b883",
+      "topic": "/chatter",
+      "messageType": "std_msgs/msg/String",
+      "fields": {
+        "data": { "type": "string", "default": "Hello from Flow!" }
+      }
+    },
+    {
+      "type": "turtle_move",
+      "label": "🐢 거북이 이동",
+      "color": "#2E75B6",
+      "topic": "/turtle1/cmd_vel",
+      "messageType": "geometry_msgs/msg/Twist",
+      "fields": {
+        "linear.x":  { "type": "float", "default": 1.0, "min": -2.0, "max": 2.0 },
+        "angular.z": { "type": "float", "default": 0.0, "min": -2.0, "max": 2.0 }
+      }
+    },
+    {
+      "type": "turtle_rotate",
+      "label": "🔄 거북이 회전",
+      "color": "#9C27B0",
+      "topic": "/turtle1/cmd_vel",
+      "messageType": "geometry_msgs/msg/Twist",
+      "fields": {
+        "angular.z": { "type": "float", "default": 1.5, "min": -3.0, "max": 3.0 }
+      }
+    },
+    {
+      "type": "turtle_stop",
+      "label": "⛔ 정지",
+      "color": "#f44336",
+      "topic": "/turtle1/cmd_vel",
+      "messageType": "geometry_msgs/msg/Twist",
+      "fields": {}
+    },
+    {
+      "type": "wait",
+      "label": "⏱ 대기",
+      "color": "#FF9800",
+      "topic": null,
+      "messageType": null,
+      "fields": {
+        "duration": { "type": "float", "default": 1.0, "min": 0.1, "max": 10.0, "unit": "초" }
+      }
+    }
+  ]
+}
