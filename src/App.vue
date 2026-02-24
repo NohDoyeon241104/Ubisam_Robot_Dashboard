@@ -79,7 +79,8 @@ function onProductSelect(product) {
     <div v-if="activeTab === 'dashboard'" class="tab-content">
       <p style="padding: 0 20px; color: #aaa;">마지막 메시지: {{ message }}</p>
       <SensorChart />
-      <TurtleMap />
+      <!-- <TurtleMap /> -->
+      <TurtleMapKeyAdd/>
     </div>
 
     <div v-if="activeTab === 'registry'" class="tab-content">

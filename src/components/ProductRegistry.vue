@@ -44,12 +44,21 @@ const newFieldType = ref('float')
 // localStorage에서 불러오기
 onMounted(() => {
   const saved = localStorage.getItem('ros2-products')
+// 수정 후 ✅
   if (saved) {
-    products.value = JSON.parse(saved)
-  } else {
+    const parsed = JSON.parse(saved)  // ← 먼저 변수에 담고
+    products.value = parsed.map(p => ({
+      ...emptyProduct(),
+      ...p
+    }))
+  }else {
     // 기본 Jazzy Demo 장비 자동 등록
     const defaultProduct = {
       product: 'ROS2 Jazzy Demo',
+      connection: {
+        host: 'localhost',
+        port: 9090
+      },
       nodes: [
         { type: 'talker', label: '📢 Talker', color: '#42b883',
           topic: '/chatter', messageType: 'std_msgs/msg/String',
@@ -121,7 +130,11 @@ function saveProduct() {
 // 장비 편집
 function editProduct(index) {
   editingProduct.value = index
-  form.value = JSON.parse(JSON.stringify(products.value[index]))
+  const original = products.value[index]
+  form.value = {
+    ...emptyProduct(),
+    ...JSON.parse(JSON.stringify(original))
+  }
   showForm.value = true
 }
 
