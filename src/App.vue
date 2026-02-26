@@ -14,6 +14,8 @@ import FlowEditor from './components/FlowEditor.vue'
 //  ProductRegistry 컴포넌트 임포트 추가하기 (장비 추가 및 노드 추가)
 import ProductRegistry from './components/ProductRegistry.vue'
 
+//MapView 컴포넌트 임포트 추가하기 260226 
+import MapView from './components/MapView.vue'
 
 
 // ROS2 웹소켓 연결 및 데이터 수신을 위한 코드
@@ -64,6 +66,9 @@ function onProductSelect(product) {
       <span class="app-title">🤖 Ubisam Robot Dashboard</span>
       <button :class="['tab', activeTab === 'dashboard' && 'active']"
         @click="activeTab = 'dashboard'">📊 대시보드</button>
+      <!-- 260226 SLAM 맵 컴포넌트로 이동   -->
+      <button :class="['tab', activeTab === 'map' && 'active']"
+        @click="activeTab = 'map'">🗺️ SLAM 맵</button>
       <button :class="['tab', activeTab === 'registry' && 'active']"
         @click="activeTab = 'registry'">🔧 장비 관리</button>
       <button :class="['tab', activeTab === 'flow' && 'active']"
@@ -73,6 +78,8 @@ function onProductSelect(product) {
           {{ selectedProduct.product }}
         </span>
       </button>
+
+
       <span class="status">{{ status }}</span>
     </div>
 
@@ -81,6 +88,11 @@ function onProductSelect(product) {
       <SensorChart />
       <!-- <TurtleMap /> -->
       <TurtleMapKeyAdd/>
+    </div>
+  
+    <!-- 260226 SLAM 맵 컴포넌트 -->
+    <div v-if="activeTab === 'map'" class="tab-content">
+      <MapView />
     </div>
 
     <div v-if="activeTab === 'registry'" class="tab-content">
