@@ -1,7 +1,12 @@
 <!-- SLAM OccupancyGrid 맵 표시 컴포넌트 -->
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+// ❌ 기존 (오류)
 import { Ros, Topic, Message } from 'roslib'
+
+// ✅ 수정
+import ROSLIB from 'roslib'
+const { Ros, Topic } = ROSLIB
 
 // ── 캔버스 ref ──────────────────────────────
 const canvas = ref(null)
