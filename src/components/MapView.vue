@@ -46,10 +46,9 @@ let planListener  = null
 let goalPublisher = null
 
 // ────────────────────────────────────────────
-// [질문 3] 좌표 변환 유틸
+// 좌표 변환 유틸
 // ────────────────────────────────────────────
 
-// 실제 좌표(m) → 격자 인덱스
 function worldToGrid(wx, wy) {
   if (!mapInfo.value) return null
   const { resolution, origin, width, height } = mapInfo.value
@@ -59,32 +58,29 @@ function worldToGrid(wx, wy) {
   return { gx, gy }
 }
 
-// 격자 인덱스 → 1차원 배열 인덱스 (index = gy * width + gx)
 function gridToIndex(gx, gy) {
   if (!mapInfo.value) return -1
   return gy * mapInfo.value.width + gx
 }
 
-// 실제 좌표(m) → 캔버스 픽셀 (Y축 반전 포함)
 function worldToCanvas(wx, wy) {
   if (!mapInfo.value) return null
   const { resolution, origin, height } = mapInfo.value
   const px = (wx - origin.position.x) / resolution
-  const py = height - (wy - origin.position.y) / resolution  // Y반전
+  const py = height - (wy - origin.position.y) / resolution
   return { px, py }
 }
 
-// 캔버스 픽셀 → 실제 좌표(m) — 클릭 시 Nav Goal 계산용
 function canvasToWorld(px, py) {
   if (!mapInfo.value) return null
   const { resolution, origin, width, height } = mapInfo.value
   const wx = px * resolution + origin.position.x
-  const wy = (height - py) * resolution + origin.position.y  // Y반전 복원
+  const wy = (height - py) * resolution + origin.position.y
   return { wx, wy }
 }
 
 // ────────────────────────────────────────────
-// 현재 로봇의 격자 인덱스 (computed — 화면 표시용)
+// 현재 로봇의 격자 인덱스
 // ────────────────────────────────────────────
 const currentGrid = computed(() => worldToGrid(robotX.value, robotY.value))
 const currentIndex = computed(() => {
@@ -106,26 +102,24 @@ function drawMap() {
   canvasEl.width  = width
   canvasEl.height = height
 
-  // ── 1. OccupancyGrid → ImageData (Y축 반전 포함) ──
   const imageData = ctx.createImageData(width, height)
 
   for (let i = 0; i < data.length; i++) {
     const value = data[i]
     const ix = i % width
     const iy = Math.floor(i / width)
-    // Y반전: ROS 좌하단 origin → Canvas 좌상단 origin
     const canvasIdx = ((height - 1 - iy) * width + ix) * 4
 
     let r, g, b
     if (value === -1) {
-      r = 180; g = 180; b = 180   // 미탐색 — 회색
+      r = 180; g = 180; b = 180
     } else if (value === 0) {
-      r = 255; g = 255; b = 255   // 빈 공간 — 흰색
+      r = 255; g = 255; b = 255
     } else if (value >= 100) {
-      r = 30;  g = 30;  b = 30    // 장애물 — 검정
+      r = 30;  g = 30;  b = 30
     } else {
       const c = 255 - Math.floor((value / 100) * 225)
-      r = c; g = c; b = c         // 1~99 확률 장애물 — 회색 보간
+      r = c; g = c; b = c
     }
 
     imageData.data[canvasIdx]     = r
@@ -135,7 +129,7 @@ function drawMap() {
   }
   ctx.putImageData(imageData, 0, 0)
 
-  // ── 2. 경로(/plan) 오버레이 ──
+  // 경로(/plan) 오버레이
   if (navPath.value.length > 1) {
     ctx.beginPath()
     ctx.strokeStyle = '#00BFFF'
@@ -148,7 +142,7 @@ function drawMap() {
     ctx.stroke()
   }
 
-  // ── 3. Nav Goal 마커 ──
+  // Nav Goal 마커
   if (goalX.value !== null) {
     const gcp = worldToCanvas(goalX.value, goalY.value)
     if (gcp) {
@@ -157,16 +151,15 @@ function drawMap() {
     }
   }
 
-  // ── 4. 로봇 마커 (TurtleMap.vue 화살표 스타일 참고) ──
+  // 로봇 마커
   const rcp = worldToCanvas(robotX.value, robotY.value)
   if (rcp) {
     const { px, py } = rcp
     const len = 14
-    const theta = -robotYaw.value  // Y반전으로 인한 방향 반전
+    const theta = -robotYaw.value
     const ex = px + Math.cos(theta) * len
     const ey = py + Math.sin(theta) * len
 
-    // 화살표 몸통
     ctx.beginPath()
     ctx.moveTo(px, py)
     ctx.lineTo(ex, ey)
@@ -174,7 +167,6 @@ function drawMap() {
     ctx.lineWidth = 3
     ctx.stroke()
 
-    // 화살표 머리
     const headLen = 8
     const headAngle = Math.PI / 6
     ctx.beginPath()
@@ -191,7 +183,6 @@ function drawMap() {
     ctx.fillStyle = '#ff4444'
     ctx.fill()
 
-    // 현재 위치 원
     ctx.beginPath()
     ctx.arc(px, py, 6, 0, Math.PI * 2)
     ctx.fillStyle = '#ffffff'
@@ -207,7 +198,6 @@ function onCanvasClick(e) {
 
   const canvasEl = canvas.value
   const rect = canvasEl.getBoundingClientRect()
-  // zoom 보정
   const px = (e.clientX - rect.left)  / zoom.value
   const py = (e.clientY - rect.top)   / zoom.value
 
@@ -228,7 +218,6 @@ function onCanvasClick(e) {
   drawMap()
 }
 
-// 마우스 휠 줌
 function onWheel(e) {
   e.preventDefault()
   const delta = e.deltaY > 0 ? -0.1 : 0.1
@@ -236,10 +225,9 @@ function onWheel(e) {
 }
 
 // ────────────────────────────────────────────
-// ROS 연결 (TurtleMap.vue와 동일한 패턴)
+// ROS 연결 — messageType을 ROS2 형식으로 수정
 // ────────────────────────────────────────────
 onMounted(() => {
-  // 맵 수신 전 캔버스 기본 크기 설정
   if (canvas.value) {
     canvas.value.width  = 500
     canvas.value.height = 500
@@ -251,24 +239,24 @@ onMounted(() => {
   ros.on('error',      () => { rosStatus.value = '오류' })
   ros.on('close',      () => { rosStatus.value = '연결 끊김' })
 
-  // /map
+  // ✅ /map — ROS2 messageType
   mapListener = new Topic({
     ros,
     name: '/map',
-    messageType: 'nav_msgs/OccupancyGrid',
+    messageType: 'nav_msgs/msg/OccupancyGrid',
     throttle_rate: 500
   })
   mapListener.subscribe((msg) => {
     mapInfo.value = msg.info
-    mapData.value = msg.data
+    mapData.value = Array.from(msg.data)  // ✅ 배열 명시적 변환
     drawMap()
   })
 
-  // /odom — 로봇 위치 + 쿼터니언 → Yaw 변환
+  // ✅ /odom — ROS2 messageType
   odomListener = new Topic({
     ros,
     name: '/odom',
-    messageType: 'nav_msgs/Odometry',
+    messageType: 'nav_msgs/msg/Odometry',
     throttle_rate: 100
   })
   odomListener.subscribe((msg) => {
@@ -276,7 +264,6 @@ onMounted(() => {
     const ori = msg.pose.pose.orientation
     robotX.value = pos.x
     robotY.value = pos.y
-    // 쿼터니언 → Yaw (라디안)
     robotYaw.value = Math.atan2(
       2 * (ori.w * ori.z + ori.x * ori.y),
       1 - 2 * (ori.y * ori.y + ori.z * ori.z)
@@ -284,11 +271,11 @@ onMounted(() => {
     drawMap()
   })
 
-  // /plan — Nav2 전역 경로
+  // ✅ /plan — ROS2 messageType
   planListener = new Topic({
     ros,
     name: '/plan',
-    messageType: 'nav_msgs/Path',
+    messageType: 'nav_msgs/msg/Path',
     throttle_rate: 300
   })
   planListener.subscribe((msg) => {
@@ -299,11 +286,11 @@ onMounted(() => {
     drawMap()
   })
 
-  // /goal_pose 발행용
+  // ✅ /goal_pose — ROS2 messageType
   goalPublisher = new Topic({
     ros,
     name: '/goal_pose',
-    messageType: 'geometry_msgs/PoseStamped'
+    messageType: 'geometry_msgs/msg/PoseStamped'
   })
 })
 
@@ -319,7 +306,7 @@ onUnmounted(() => {
   <div style="padding: 20px;">
     <h2>🗺️ SLAM 맵 뷰어</h2>
 
-    <!-- 상태 & 좌표 (TurtleMap.vue와 동일한 스타일) -->
+    <!-- 상태 & 좌표 -->
     <p>
       ROS: {{ rosStatus }} &nbsp;|&nbsp;
       X: {{ robotX.toFixed(2) }} &nbsp;|&nbsp;
@@ -327,8 +314,8 @@ onUnmounted(() => {
       방향: {{ (robotYaw * 180 / Math.PI).toFixed(1) }}°
     </p>
 
-    <!-- 질문 3 좌표 변환 결과 -->
-    <p v-if="mapInfo" style="font-size: 12px; color: #888; margin-top: 4px; font-family: monospace;">
+    <!-- 격자 인덱스 정보 -->
+    <p v-if="mapInfo" style="font-size: 12px; color: #aaa; margin-top: 4px; font-family: monospace;">
       격자 인덱스: <span style="color: #42b883;">gx={{ currentGrid?.gx ?? '-' }}, gy={{ currentGrid?.gy ?? '-' }}</span>
       &nbsp;→&nbsp;
       1D index: <span style="color: #42b883;">{{ currentIndex }}</span>
@@ -337,7 +324,7 @@ onUnmounted(() => {
       ({{ (mapInfo.width  * mapInfo.resolution).toFixed(1) }}m
        × {{ (mapInfo.height * mapInfo.resolution).toFixed(1) }}m)
     </p>
-    <p v-else style="font-size: 12px; color: #555; margin-top: 4px;">
+    <p v-else style="font-size: 12px; color: #aaa; margin-top: 4px;">
       🛰️ /map 토픽 대기 중... (SLAM을 먼저 실행해주세요)
     </p>
 
@@ -349,13 +336,13 @@ onUnmounted(() => {
       </span>
       <button class="ctrl-btn" @click="zoom = Math.max(zoom - 0.25, 0.5)">🔍-</button>
       <button class="ctrl-btn" @click="zoom = 1">리셋</button>
-      <span style="font-size: 11px; color: #555; margin-left: 6px;">
+      <span style="font-size: 11px; color: #aaa; margin-left: 6px;">
         💡 맵 클릭 → Nav Goal 발행 &nbsp;|&nbsp; 휠로 줌
       </span>
     </div>
 
     <!-- 범례 -->
-    <div style="display: flex; gap: 14px; font-size: 11px; color: #888; margin-bottom: 8px; flex-wrap: wrap;">
+    <div style="display: flex; gap: 14px; font-size: 11px; color: #aaa; margin-bottom: 8px; flex-wrap: wrap;">
       <span><i class="legend-cell" style="background:#ffffff;" /> 빈 공간</span>
       <span><i class="legend-cell" style="background:#1e1e1e;" /> 장애물</span>
       <span><i class="legend-cell" style="background:#b4b4b4;" /> 미탐색</span>
@@ -364,7 +351,7 @@ onUnmounted(() => {
       <span style="color:#00BFFF;">━ 경로(/plan)</span>
     </div>
 
-    <!-- 캔버스 (줌 적용) -->
+    <!-- 캔버스 영역 -->
     <div class="canvas-wrapper">
       <canvas
         ref="canvas"
@@ -380,25 +367,28 @@ onUnmounted(() => {
         @click="onCanvasClick"
         @wheel.prevent="onWheel"
       />
+
+      <!-- 맵 수신 전 가이드 (mapInfo 수신 시 자동으로 사라짐) -->
       <div v-if="!mapInfo" class="placeholder">
         <div class="guide-box">
           <p class="guide-title">🛰️ SLAM 맵 수신 대기 중</p>
-          <p class="guide-sub">아래 순서대로 터미널을 실행하면 맵이 표시됩니다<br><span style="color:#666;">(ROS2 Jazzy + Turtlebot3 Waffle + Gazebo Harmonic)</span></p>
+          <p class="guide-sub">
+            아래 순서대로 터미널을 실행하면 맵이 표시됩니다<br>
+            <span style="color:#888;">(ROS2 Jazzy + Turtlebot3 Waffle + Gazebo Harmonic)</span>
+          </p>
 
           <div class="terminal-list">
-            <!-- 터미널 1 -->
             <div class="terminal-item">
               <div class="terminal-label">
                 <span class="term-badge">터미널 1</span>
-                <span class="term-desc">Gazebo 월드 실행</span>
+                <span class="term-desc">Gazebo 월드 실행 (▶ 재생 버튼 필수!)</span>
               </div>
               <div class="cmd-row">
-                <code>gz sim /opt/ros/jazzy/share/nav2_minimal_tb3_sim/models/turtlebot3_world/model.sdf</code>
-                <button class="copy-btn" @click.stop="copyCmd('gz sim /opt/ros/jazzy/share/nav2_minimal_tb3_sim/models/turtlebot3_world/model.sdf')">복사</button>
+                <code>gz sim ~/tb3_sandbox.sdf</code>
+                <button class="copy-btn" @click.stop="copyCmd('gz sim ~/tb3_sandbox.sdf')">복사</button>
               </div>
             </div>
 
-            <!-- 터미널 2 -->
             <div class="terminal-item">
               <div class="terminal-label">
                 <span class="term-badge">터미널 2</span>
@@ -410,7 +400,6 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- 터미널 3 -->
             <div class="terminal-item">
               <div class="terminal-label">
                 <span class="term-badge">터미널 3</span>
@@ -422,22 +411,31 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- 터미널 4 -->
             <div class="terminal-item">
               <div class="terminal-label">
                 <span class="term-badge">터미널 4</span>
-                <span class="term-desc">키보드 조종 (로봇을 움직여야 지도가 생성됩니다)</span>
+                <span class="term-desc">imu_link TF 퍼블리시 (SLAM 필수)</span>
               </div>
               <div class="cmd-row">
-                <code>ros2 run turtlebot3_teleop teleop_keyboard</code>
-                <button class="copy-btn" @click.stop="copyCmd('ros2 run turtlebot3_teleop teleop_keyboard')">복사</button>
+                <code>ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 base_footprint imu_link</code>
+                <button class="copy-btn" @click.stop="copyCmd('ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 base_footprint imu_link')">복사</button>
               </div>
             </div>
 
-            <!-- 터미널 5 -->
             <div class="terminal-item">
               <div class="terminal-label">
-                <span class="term-badge term-badge--blue">터미널 5</span>
+                <span class="term-badge">터미널 5</span>
+                <span class="term-desc">base_scan TF 퍼블리시 (SLAM 필수)</span>
+              </div>
+              <div class="cmd-row">
+                <code>ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 base_footprint base_scan</code>
+                <button class="copy-btn" @click.stop="copyCmd('ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 base_footprint base_scan')">복사</button>
+              </div>
+            </div>
+
+            <div class="terminal-item">
+              <div class="terminal-label">
+                <span class="term-badge term-badge--blue">터미널 6</span>
                 <span class="term-desc">rosbridge 실행 (이 대시보드 연결용)</span>
               </div>
               <div class="cmd-row">
@@ -445,14 +443,25 @@ onUnmounted(() => {
                 <button class="copy-btn" @click.stop="copyCmd('ros2 launch rosbridge_server rosbridge_websocket_launch.xml')">복사</button>
               </div>
             </div>
+
+            <div class="terminal-item">
+              <div class="terminal-label">
+                <span class="term-badge term-badge--blue">터미널 7</span>
+                <span class="term-desc">키보드 조종 (W/A/S/D 키로 로봇 이동)</span>
+              </div>
+              <div class="cmd-row">
+                <code>ros2 run teleop_twist_keyboard teleop_twist_keyboard</code>
+                <button class="copy-btn" @click.stop="copyCmd('ros2 run teleop_twist_keyboard teleop_twist_keyboard')">복사</button>
+              </div>
+            </div>
           </div>
 
           <p class="guide-tip">
-            💡 터미널 5 실행 후 우측 상단이 <b style="color:#42b883">연결됨</b>으로 바뀌면
-            터미널 4에서 로봇을 움직여보세요! (W/A/S/D 키)
+            💡 터미널 6 실행 후 우측 상단이 <b style="color:#42b883">연결됨</b>으로 바뀌면
+            터미널 7에서 로봇을 움직여보세요! (W/A/S/D 키)<br>
+            <span style="color:#f0a500;">⚠️ teleop_twist_keyboard 를 사용하세요 (turtlebot3_teleop 사용 시 타입 충돌 발생)</span>
           </p>
 
-          <!-- 복사 완료 토스트 -->
           <div v-if="copyToast" class="copy-toast">✅ 클립보드에 복사됐습니다!</div>
         </div>
       </div>
@@ -497,7 +506,6 @@ onUnmounted(() => {
   overflow-y: auto;
 }
 
-/* ── 터미널 가이드 ── */
 .guide-box {
   position: relative;
   width: 100%;
@@ -516,7 +524,7 @@ onUnmounted(() => {
 
 .guide-sub {
   font-size: 13px;
-  color: #666;
+  color: #aaa;
   margin-bottom: 20px;
   text-align: center;
 }
@@ -556,17 +564,9 @@ onUnmounted(() => {
   color: #000;
 }
 
-.guide-tip {
-  margin-top: 14px;
-  font-size: 12px;
-  color: #666;
-  text-align: center;
-  line-height: 1.8;
-}
-
 .term-desc {
   font-size: 12px;
-  color: #888;
+  color: #aaa;
 }
 
 .cmd-row {
@@ -622,6 +622,14 @@ onUnmounted(() => {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateX(-50%) translateY(6px); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.guide-tip {
+  margin-top: 14px;
+  font-size: 12px;
+  color: #aaa;
+  text-align: center;
+  line-height: 1.8;
 }
 
 .legend-cell {

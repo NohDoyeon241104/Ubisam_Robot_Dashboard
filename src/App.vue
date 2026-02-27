@@ -17,6 +17,8 @@ import ProductRegistry from './components/ProductRegistry.vue'
 //MapView 컴포넌트 임포트 추가하기 260226 
 import MapView from './components/MapView.vue'
 
+// LicenseNotice 컴포넌트 임포트 추가하기 260227
+import LicenseNotice from './components/LicenseNotice.vue'
 
 // ROS2 웹소켓 연결 및 데이터 수신을 위한 코드
 import {ref, onMounted} from 'vue'
@@ -81,6 +83,7 @@ function onProductSelect(product) {
 
 
       <span class="status">{{ status }}</span>
+      <LicenseNotice /> <!-- 라이선스 고지 컴포넌트 추가 -->
     </div>
 
     <div v-if="activeTab === 'dashboard'" class="tab-content">
