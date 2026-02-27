@@ -1,12 +1,7 @@
 <!-- SLAM OccupancyGrid 맵 표시 컴포넌트 -->
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-// ❌ 기존 (오류)
-import { Ros, Topic, Message } from 'roslib'
-
-// ✅ 수정
-import ROSLIB from 'roslib'
-const { Ros, Topic } = ROSLIB
+import { Ros, Topic } from 'roslib'
 
 // ── 캔버스 ref ──────────────────────────────
 const canvas = ref(null)
@@ -32,6 +27,16 @@ const zoom = ref(1)
 
 // ── 경로(/plan) ──────────────────────────────
 const navPath = ref([])  // [{ x, y }, ...]
+
+// ── 복사 토스트 ──────────────────────────────
+const copyToast = ref(false)
+
+function copyCmd(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    copyToast.value = true
+    setTimeout(() => { copyToast.value = false }, 2000)
+  })
+}
 
 // ── ROS 인스턴스 (cleanup용) ─────────────────
 let ros = null
@@ -212,13 +217,13 @@ function onCanvasClick(e) {
   goalX.value = world.wx
   goalY.value = world.wy
 
-  goalPublisher.publish(new Message({
+  goalPublisher.publish({
     header: { frame_id: 'map' },
     pose: {
       position: { x: world.wx, y: world.wy, z: 0 },
       orientation: { x: 0, y: 0, z: 0, w: 1 }
     }
-  }))
+  })
 
   drawMap()
 }
@@ -234,6 +239,12 @@ function onWheel(e) {
 // ROS 연결 (TurtleMap.vue와 동일한 패턴)
 // ────────────────────────────────────────────
 onMounted(() => {
+  // 맵 수신 전 캔버스 기본 크기 설정
+  if (canvas.value) {
+    canvas.value.width  = 500
+    canvas.value.height = 500
+  }
+
   ros = new Ros({ url: 'ws://localhost:9090' })
 
   ros.on('connection', () => { rosStatus.value = '연결됨' })
@@ -363,13 +374,87 @@ onUnmounted(() => {
           border: '2px solid #42b883',
           borderRadius: '8px',
           cursor: mapInfo ? 'crosshair' : 'default',
-          imageRendering: 'pixelated'
+          imageRendering: 'pixelated',
+          display: 'block'
         }"
         @click="onCanvasClick"
         @wheel.prevent="onWheel"
       />
       <div v-if="!mapInfo" class="placeholder">
-        <p>🛰️ SLAM 실행 후<br>맵이 여기 표시됩니다</p>
+        <div class="guide-box">
+          <p class="guide-title">🛰️ SLAM 맵 수신 대기 중</p>
+          <p class="guide-sub">아래 순서대로 터미널을 실행하면 맵이 표시됩니다<br><span style="color:#666;">(ROS2 Jazzy + Turtlebot3 Waffle + Gazebo Harmonic)</span></p>
+
+          <div class="terminal-list">
+            <!-- 터미널 1 -->
+            <div class="terminal-item">
+              <div class="terminal-label">
+                <span class="term-badge">터미널 1</span>
+                <span class="term-desc">Gazebo 월드 실행</span>
+              </div>
+              <div class="cmd-row">
+                <code>gz sim /opt/ros/jazzy/share/nav2_minimal_tb3_sim/models/turtlebot3_world/model.sdf</code>
+                <button class="copy-btn" @click.stop="copyCmd('gz sim /opt/ros/jazzy/share/nav2_minimal_tb3_sim/models/turtlebot3_world/model.sdf')">복사</button>
+              </div>
+            </div>
+
+            <!-- 터미널 2 -->
+            <div class="terminal-item">
+              <div class="terminal-label">
+                <span class="term-badge">터미널 2</span>
+                <span class="term-desc">로봇(Waffle) 스폰 + ROS-Gazebo 브릿지</span>
+              </div>
+              <div class="cmd-row">
+                <code>ros2 launch nav2_minimal_tb3_sim spawn_tb3.launch.py</code>
+                <button class="copy-btn" @click.stop="copyCmd('ros2 launch nav2_minimal_tb3_sim spawn_tb3.launch.py')">복사</button>
+              </div>
+            </div>
+
+            <!-- 터미널 3 -->
+            <div class="terminal-item">
+              <div class="terminal-label">
+                <span class="term-badge">터미널 3</span>
+                <span class="term-desc">SLAM 실행 (지도 생성)</span>
+              </div>
+              <div class="cmd-row">
+                <code>ros2 launch turtlebot3_cartographer cartographer.launch.py use_sim_time:=True</code>
+                <button class="copy-btn" @click.stop="copyCmd('ros2 launch turtlebot3_cartographer cartographer.launch.py use_sim_time:=True')">복사</button>
+              </div>
+            </div>
+
+            <!-- 터미널 4 -->
+            <div class="terminal-item">
+              <div class="terminal-label">
+                <span class="term-badge">터미널 4</span>
+                <span class="term-desc">키보드 조종 (로봇을 움직여야 지도가 생성됩니다)</span>
+              </div>
+              <div class="cmd-row">
+                <code>ros2 run turtlebot3_teleop teleop_keyboard</code>
+                <button class="copy-btn" @click.stop="copyCmd('ros2 run turtlebot3_teleop teleop_keyboard')">복사</button>
+              </div>
+            </div>
+
+            <!-- 터미널 5 -->
+            <div class="terminal-item">
+              <div class="terminal-label">
+                <span class="term-badge term-badge--blue">터미널 5</span>
+                <span class="term-desc">rosbridge 실행 (이 대시보드 연결용)</span>
+              </div>
+              <div class="cmd-row">
+                <code>ros2 launch rosbridge_server rosbridge_websocket_launch.xml</code>
+                <button class="copy-btn" @click.stop="copyCmd('ros2 launch rosbridge_server rosbridge_websocket_launch.xml')">복사</button>
+              </div>
+            </div>
+          </div>
+
+          <p class="guide-tip">
+            💡 터미널 5 실행 후 우측 상단이 <b style="color:#42b883">연결됨</b>으로 바뀌면
+            터미널 4에서 로봇을 움직여보세요! (W/A/S/D 키)
+          </p>
+
+          <!-- 복사 완료 토스트 -->
+          <div v-if="copyToast" class="copy-toast">✅ 클립보드에 복사됐습니다!</div>
+        </div>
       </div>
     </div>
 
@@ -396,8 +481,9 @@ onUnmounted(() => {
 .canvas-wrapper {
   position: relative;
   overflow: auto;
-  max-width: 100%;
-  max-height: 600px;
+  width: 100%;
+  height: calc(100vh - 220px);
+  min-height: 500px;
   background: #111;
   border-radius: 8px;
 }
@@ -408,11 +494,134 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #555;
+  overflow-y: auto;
+}
+
+/* ── 터미널 가이드 ── */
+.guide-box {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  padding: 28px 32px;
+  text-align: left;
+}
+
+.guide-title {
+  font-size: 18px;
+  color: #42b883;
+  font-weight: bold;
+  margin-bottom: 6px;
   text-align: center;
-  font-size: 14px;
-  line-height: 2;
-  min-height: 300px;
+}
+
+.guide-sub {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.terminal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.terminal-item {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.terminal-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.term-badge {
+  background: #42b883;
+  color: #000;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.term-badge--blue {
+  background: #00BFFF;
+  color: #000;
+}
+
+.guide-tip {
+  margin-top: 14px;
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  line-height: 1.8;
+}
+
+.term-desc {
+  font-size: 12px;
+  color: #888;
+}
+
+.cmd-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  background: #161b22;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.cmd-row code {
+  flex: 1;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+  color: #e6edf3;
+  word-break: break-all;
+}
+
+.copy-btn {
+  flex-shrink: 0;
+  background: #21262d;
+  color: #8b949e;
+  border: 1px solid #30363d;
+  border-radius: 5px;
+  padding: 3px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.copy-btn:hover {
+  background: #42b883;
+  color: #000;
+  border-color: #42b883;
+}
+
+.copy-toast {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #42b883;
+  color: #000;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 6px 16px;
+  border-radius: 20px;
+  white-space: nowrap;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 .legend-cell {
